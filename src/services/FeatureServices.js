@@ -1,20 +1,17 @@
-const { azureAxios } = require('../config/azureConfig');
+const azureAxios = require('../config/azureConfig');
+const PARAM_NAME_PBI = 'HorasGastas';
+const PARAM_NAME_FEATURE = 'TotalHorasGastas';
 
 async function getAllFeatures() {
     try {
 
         // WIQL para buscar todas as Features
         const query = {
-            query: `
-        SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo]
-        FROM WorkItems
-        WHERE [System.WorkItemType] = 'Feature'
-        ORDER BY [System.CreatedDate] DESC
-      `,
+            query: `SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo] FROM WorkItems WHERE [System.WorkItemType] = 'Feature' ORDER BY [System.CreatedDate] DESC`,
         };
         // Faz a requisição para o endpoint WIQL
         const response = await azureAxios.post(
-            `wit/wiql?api-version=7.0`, // Endpoint do WIQL
+            `wit/wiql?api-version=7.0`,
             query,
             {
                 headers: {
@@ -73,15 +70,40 @@ async function getPBIsByFeatureId(featureId) {
 
             pbiDetails.push({
                 id: pbiData.id,
-                usedHours: pbiData.fields['Custom.HorasGastas'],
+                usedHours: pbiData.fields[`Custom.${PARAM_NAME_PBI}`],
             });
         }
         return pbiDetails;
 
+    } catch {
+    }
+}
+
+async function updateFeature(obj) {
+    try {
+        const updatePayload = [
+            {
+                op: 'add',
+                path: `/fields/Custom.${PARAM_NAME_FEATURE}`,
+                value: obj.totalHoursOnFeature,
+            },
+        ];
+
+        const response = await azureAxios.patch(
+            `wit/workitems/${obj.featureId}?api-version=7.0`,
+            updatePayload,
+            {
+                headers: {
+                    'Content-Type': 'application/json-patch+json',
+                },
+            }
+        );
+
+        return response.data;
     } catch (error) {
-        console.error(`Erro ao recuperar PBIs para a Feature ${featureId}:`, error.response?.data || error.message);
+        console.error(`Erro ao atualizar a Feature com ID ${obj.featureId}:`, error.response?.data || error.message);
         throw error;
     }
 }
 
-module.exports = { getAllFeatures, getPBIsByFeatureId };
+module.exports = { getAllFeatures, getPBIsByFeatureId, updateFeature };

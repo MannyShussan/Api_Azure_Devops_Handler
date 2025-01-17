@@ -7,14 +7,14 @@ async function getTaskIdsByPBI(pbiId) {
 
     const relations = workItemData.relations || [];
     if (relations.length === 0) {
-      console.log(`Nenhuma relação encontrada para o PBI ${pbiId}.`);
+      // console.log(`Nenhuma relação encontrada para o PBI ${pbiId}.`);
       return [];
     }
 
     const childTasks = relations.filter(relation => relation.rel === 'System.LinkTypes.Hierarchy-Forward');
 
     if (childTasks.length === 0) {
-      console.log(`Nenhuma Task associada ao PBI ${pbiId} foi encontrada.`);
+      // console.log(`Nenhuma Task associada ao PBI ${pbiId} foi encontrada.`);
       return [];
     }
 
@@ -36,13 +36,17 @@ async function getTaskIdsByPBI(pbiId) {
   }
 }
 
-async function getTaskDetailsById(taskId){
-  try{
+async function getTaskDetailsById(taskId) {
+  try {
     const response = await azureAxios.get(`wit/workitems/${taskId}?api-version=7.0`);
 
     const taskData = response.data;
-    console.log(taskData);
-  }catch{
+
+    return {
+      id: taskId,
+      usedHours: taskData.fields['Custom.WorkedHours']
+    };
+  } catch {
     console.error(`Erro ao recuperar detalhes da Task ${taskId}:`, error.response?.data || error.message);
     throw error;
   }

@@ -1,15 +1,22 @@
-const { getPBIs, getPBIById } = require('./workItemService');
+const { getPBIs, updatePBI } = require('./workItemService');
 const { getTaskIdsByPBI, getTaskDetailsById } = require('./TaskService');
-const { getAllFeatures, getPBIsByFeatureId } = require('./FeatureServices');
+const { getAllFeatures, getPBIsByFeatureId, updateFeature } = require('./featureServices');
 
 async function updateWorkedTime() {
-    let featureUpdated;
-    await updateFeatures().then(response => featureUpdated = response);
 
-    console.log(featureUpdated);
+    
 
-    // await updatePbisBoard();
+    await updatePbis().then(responses => {
+        for (const response of responses) {
+            updatePBI(response);
+        }
+    });
 
+    await updateFeatures().then(responses => {
+        for (const response of responses) {
+            updateFeature(response);
+        }
+    });
 }
 
 
@@ -23,7 +30,7 @@ async function updateFeatures() {
             const val = pbis.reduce((sum, pbi) => sum + pbi.usedHours, 0);
             const obj = {
                 featureId: feature,
-                totoalHoursOnFeature: val
+                totalHoursOnFeature: val,
             };
             workItem.push(obj);
         }
@@ -32,25 +39,33 @@ async function updateFeatures() {
             try { res(workItem); }
             catch { rej('erro ao executar função') }
         });
-    } catch (error) {
-        console.log('Erro ao tentar recuperar as features');
-    }
-}
-
-async function updatePbisBoard() {
-    try {
-        console.log("cheguei aqui");
-        const pbi = await getPBIs();
-        // console.log(pbi);
-        return;
     } catch {
-
     }
 }
 
 async function updatePbis() {
     try {
+        const pbis = await getPBIs();
+        const arr = [];
 
+        for (const pbi of pbis) {
+            const tasks = await getTaskIdsByPBI(pbi);
+            const arrTask = [];
+
+            for (const task of tasks) {
+                arrTask.push(await getTaskDetailsById(task));
+            }
+
+            arr.push({
+                pbiId: pbi,
+                totalHoursonPbi: arrTask.reduce((sum, t) => sum + t.usedHours, 0),
+            });
+        }
+
+        return new Promise((res, rej) => {
+            try { res(arr) }
+            catch { rej('erro ao executar função') }
+        });
     } catch {
 
     }

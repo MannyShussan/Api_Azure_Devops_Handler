@@ -1,49 +1,57 @@
-const { azureAxios } = require('../config/azureConfig'); // Importa a configuração do Axios
+const azureAxios = require('../config/azureConfig'); // Importa a configuração do Axios
+const PARAM_NAME = 'HorasGastas'
 
 // Função para recuperar todos os PBIs
 async function getPBIs() {
   try {
-    // Consulta WIQL para recuperar PBIs
     const query = {
       query: `SELECT *
               FROM WorkItems
               WHERE [System.WorkItemType] = 'Product Backlog Item'`,
     };
-
-    // Faz a requisição POST para o endpoint WIQL
     const response = await azureAxios.post(
-      `wit/wiql?api-version=7.0`, // Endpoint WIQL
-      query, // Corpo da requisição
+      `wit/wiql?api-version=7.0`,
+      query,
       {
         headers: {
-          'Content-Type': 'application/json', // Content-Type correto para WIQL
+          'Content-Type': 'application/json',
         },
       }
     );
 
-    // Retorna os PBIs recuperados
-    const workItems = response.data.workItems || [];
-    console.log(`PBIs encontrados: ${workItems.length}`);
-    console.table(workItems);
-    console.log(workItems);
+    const workItems = (response.data.workItems || []).map(i => i.id);
+
     return workItems;
-  } catch (error) {
-    // Log de erro detalhado
-    console.error('Erro ao recuperar PBIs:', error.response?.data || error.message);
-    throw error;
-  }
-}
-
-async function getPBIById(id) {
-  try {
-    const response = await azureAxios.get(`wit/workitems/${id}?api-version=7.0`);
-    const workitem = response.data;
-
-    // console.log(workitem.fields);
-    console.log(`Id: ${workitem.id}, Title: ${workitem.fields['System.Title']}`);
   } catch {
 
   }
 }
 
-module.exports = { getPBIs, getPBIById };
+async function updatePBI(newPbi) {
+  try {
+    const updatePayload = [
+      {
+        op: 'add',
+        path: `/fields/Custom.${PARAM_NAME}`,
+        value: newPbi.totalHoursonPbi,
+      },
+    ];
+    const response = await azureAxios.patch(
+      `wit/workitems/${newPbi.pbiId}?api-version=7.0`,
+      updatePayload,
+      {
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+    console.error(`Erro ao atualizar o PBI com ID ${newPbi.pbiId}:`, error.response?.data || error.message);
+    throw error;
+  }
+}
+
+module.exports = { getPBIs, updatePBI };
